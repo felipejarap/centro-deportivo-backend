@@ -1,0 +1,130 @@
+spring:
+  application:
+    name: ms-apigateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            corsConfigurations:
+              '[/**]':
+                allowedOrigins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders: '*'
+                exposedHeaders:
+                  - Authorization
+                maxAge: 3600
+          routes:
+            - id: swagger-ui-assets
+              uri: lb://ms-users
+              predicates:
+                - Path=/swagger-ui/**
+
+            - id: swagger-auth
+              uri: lb://ms-auth
+              predicates:
+                - Path=/docs/auth/**
+              filters:
+                - StripPrefix=2
+
+            - id: swagger-users
+              uri: lb://ms-users
+              predicates:
+                - Path=/docs/users/**
+              filters:
+                - StripPrefix=2
+
+            - id: swagger-classes
+              uri: lb://ms-classes
+              predicates:
+                - Path=/docs/classes/**
+              filters:
+                - StripPrefix=2
+
+            - id: swagger-plans
+              uri: lb://ms-plans
+              predicates:
+                - Path=/docs/plans/**
+              filters:
+                - StripPrefix=2
+
+            - id: swagger-subscriptions
+              uri: lb://ms-subscription
+              predicates:
+                - Path=/docs/subscriptions/**
+              filters:
+                - StripPrefix=2
+
+            - id: swagger-reservations
+              uri: lb://ms-reservation
+              predicates:
+                - Path=/docs/reservations/**
+              filters:
+                - StripPrefix=2
+
+            - id: swagger-assistance
+              uri: lb://ms.asistencia
+              predicates:
+                - Path=/docs/assistances/**
+              filters:
+                - StripPrefix=2
+
+            - id: ms-auth
+              uri: lb://ms-auth
+              predicates:
+                - Path=/api/v1/auth/**
+
+            - id: ms-users
+              uri: lb://ms-users
+              predicates:
+                - Path=/api/v1/users/**
+
+            - id: ms-type-users
+              uri: lb://ms-users
+              predicates:
+                - Path=/api/v1/type-users/**
+
+            - id: ms-classes
+              uri: lb://ms-classes
+              predicates:
+                - Path=/api/v1/classes/**
+
+            - id: ms-type-classes
+              uri: lb://ms-classes
+              predicates:
+                - Path=/api/v1/type-classes/**
+
+            - id: ms-plans
+              uri: lb://ms-plans
+              predicates:
+                - Path=/api/v1/plans/**
+
+            - id: ms-subscription
+              uri: lb://ms-subscription
+              predicates:
+                - Path=/api/v1/subscriptions/**
+
+            - id: ms-reservations
+              uri: lb://ms-reservation
+              predicates:
+                - Path=/api/v1/reservations/**
+
+            - id: ms-assistance
+              uri: lb://ms.asistencia
+              predicates:
+                - Path=/api/v1/assistances/**
+
+server:
+  port: 8090
+
+eureka:
+  instance:
+    prefer-ip-address: true

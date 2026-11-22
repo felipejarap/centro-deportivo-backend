@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: ms-auth
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+server:
+  port: 8080
+eureka:
+  instance:
+    prefer-ip-address: true
+jwt:
+  expiration: ${JWT_EXPIRATION:900000}
+springdoc:
+  swagger-ui:
+    path: /api-docs
+    url: /docs/auth/v3/api-docs
+    configUrl: /docs/auth/v3/api-docs/swagger-config
+    operationsSorter: method
+    tagsSorter: alpha

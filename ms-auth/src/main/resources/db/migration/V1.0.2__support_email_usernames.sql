@@ -1,0 +1,2 @@
+ALTER TABLE credencial
+    MODIFY COLUMN username VARCHAR(255) NOT NULL;

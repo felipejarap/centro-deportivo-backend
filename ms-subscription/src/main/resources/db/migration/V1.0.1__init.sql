@@ -1,0 +1,7 @@
+CREATE TABLE subscription (
+id BIGINT AUTO_INCREMENT PRIMARY KEY,
+ user_id BIGINT,
+plans_id BIGINT,
+end_date DATETIME,
+state BOOLEAN NOT NULL
+);

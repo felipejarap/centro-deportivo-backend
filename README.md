@@ -37,6 +37,25 @@ El microservicio de autenticación acepta refresh tokens únicamente en `POST /a
 
 El registro web envía los datos del alumno y su contraseña juntos a `POST /api/v1/auth/register`. Auth crea el perfil con rol Alumno fijo en Users y luego las credenciales; si guardar las credenciales falla, intenta eliminar el perfil recién creado. El endpoint de registro de Users no se expone como ruta pública del Gateway, y la solicitud no acepta un ID de usuario existente que pueda ser reclamado. Users también rechaza correos que ya están asociados a perfiles. El flujo no verifica la titularidad del buzón: para exigirla, configura un proveedor de correo y un proceso de verificación con token de un solo uso antes de activar la cuenta.
 
+## Pruebas y cobertura
+
+Cada microservicio incluye pruebas JUnit y genera un informe JaCoCo al ejecutar `.\mvnw.cmd clean verify` desde su carpeta. El reporte HTML queda en `target\site\jacoco\index.html`. Se requiere JDK 21.
+
+Última medición local: 22-11-2026. Las pruebas terminaron correctamente en los nueve módulos (209 pruebas en total). La cobertura de líneas e instrucciones superó el 80% en cada módulo con código funcional medido:
+
+| Módulo | Líneas | Instrucciones |
+|---|---:|---:|
+| API Gateway | 89,55% | 82,97% |
+| Auth | 97,09% | 97,59% |
+| Users | 99,39% | 97,17% |
+| Classes | 82,80% | 80,91% |
+| Plans | 97,44% | 93,25% |
+| Reservations | 92,94% | 91,10% |
+| Assistance | 89,52% | 88,06% |
+| Subscription | 91,16% | 90,34% |
+
+Eureka solo contiene la clase de arranque, excluida del cálculo por no representar lógica funcional. La cobertura de ramas es una métrica adicional y permanece bajo 80% en algunos módulos.
+
 Para consultar logs: `docker compose logs -f`.
 Para detener los contenedores sin borrar la base: `docker compose down`.
 Los datos de MySQL persisten en el volumen `mysql_data`; para borrarlos explícitamente: `docker compose down -v`.

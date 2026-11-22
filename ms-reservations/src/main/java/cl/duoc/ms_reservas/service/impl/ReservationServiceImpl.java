@@ -5,7 +5,6 @@ import cl.duoc.ms_reservas.model.Reservation;
 import cl.duoc.ms_reservas.repository.ReservationRespository;
 import cl.duoc.ms_reservas.service.ReservationService;
 import cl.duoc.ms_reservas.service.api.ClasseClient;
-import cl.duoc.ms_reservas.service.api.CoachClient;
 import cl.duoc.ms_reservas.service.api.UserClient;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +24,6 @@ public class ReservationServiceImpl implements ReservationService {
 
     private final ReservationRespository repository;
     private final UserClient userClient;
-    private final CoachClient coachClient;
     private final ClasseClient claseClient;
 
     private Reservation toEntity(ReservationRequestDto dto) {
@@ -59,11 +57,11 @@ public class ReservationServiceImpl implements ReservationService {
 
         if (entity.getIdCoach() != null) {
             try {
-                CoachResponseDto coach = coachClient.findById(entity.getIdCoach());
+                UserResponseDto coach = userClient.findById(entity.getIdCoach());
                 dto.setCoach(coach);
-                log.debug("Entrenador enriquecido en respuesta: idCoach={}", entity.getIdCoach());
+                log.debug("Usuario entrenador enriquecido en respuesta: idCoach={}", entity.getIdCoach());
             } catch (Exception e) {
-                log.warn("No se pudo obtener datos del entrenador para enriquecer respuesta: idCoach={}, motivo={}",
+                log.warn("No se pudo obtener datos del usuario entrenador para enriquecer respuesta: idCoach={}, motivo={}",
                         entity.getIdCoach(), e.getMessage());
                 dto.setCoach(null);
             }
@@ -254,19 +252,21 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public List<ReservationResponseDto> findByCoachId(Long coachId) throws Exception {
-        log.info("Buscando reservas por entrenador: idEntrenador={}", coachId);
+        log.info("Buscando reservas por usuario entrenador: idUsuario={}", coachId);
         try {
-            CoachResponseDto coachFind = coachClient.findById(coachId);
+            UserResponseDto coachFind = userClient.findById(coachId);
             if (coachFind == null) {
-                log.warn("Entrenador no encontrado en ms-coaches: idEntrenador={}", coachId);
+                log.warn("Usuario entrenador no encontrado en ms-users: idUsuario={}", coachId);
                 return null;
             }
             List<ReservationResponseDto> result = repository.findByIdCoach(coachId)
                     .stream().map(this::toDto).toList();
-            log.info("Reservas encontradas para entrenador: idCoach={}, total={}", coachId, result.size());
+            log.info("Reservas encontradas para usuario entrenador: idUsuario={}, total={}",
+                    coachId, result.size());
             return result;
         } catch (Exception e) {
-            log.error("Error al buscar reservas por entrenador: idCoach={}, motivo={}", coachId, e.getMessage());
+            log.error("Error al buscar reservas por usuario entrenador: idUsuario={}, motivo={}",
+                    coachId, e.getMessage());
             throw new Exception(e.getMessage());
         }
     }

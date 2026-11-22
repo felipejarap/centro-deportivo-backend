@@ -173,23 +173,23 @@ public class ReservationController {
             return ResponseEntity.notFound().build();
         }
     }
-    @Operation(summary = "Listar reservas por ID de Entrenador", description = "Recupera las reservas y citas vigentes de clases que están bajo la tutela de un profesor de MS_Entrenadores.")
+    @Operation(summary = "Listar reservas por ID de usuario entrenador", description = "Recupera las reservas de clases impartidas por un usuario con rol de profesor.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Listado de reservas del entrenador recuperado con éxito"),
             @ApiResponse(responseCode = "404", description = "No se encontraron reservas vinculadas al entrenador indicado", content = @Content),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor", content = @Content)
     })
-    @GetMapping("/by-coach/{coachId}")
-    public ResponseEntity<List<ReservationResponseDto>> findByCoachId(@PathVariable Long coachId) throws Exception {
-        log.info("GET /api/v1/reservations/by-coach/{} - Buscando reservas por entrenador", coachId);
+    @GetMapping("/by-coach/{userId}")
+    public ResponseEntity<List<ReservationResponseDto>> findByCoachId(@PathVariable Long userId) throws Exception {
+        log.info("GET /api/v1/reservations/by-coach/{} - Buscando reservas por usuario entrenador", userId);
         try {
-            List<ReservationResponseDto> result = service.findByCoachId(coachId);
-            log.info("GET /api/v1/reservations/by-coach/{} - Resultado: {} registros", coachId,
+            List<ReservationResponseDto> result = service.findByCoachId(userId);
+            log.info("GET /api/v1/reservations/by-coach/{} - Resultado: {} registros", userId,
                     result != null ? result.size() : 0);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-            log.warn("GET /api/v1/reservations/by-coach/{} - Entrenador no encontrado, respondiendo 404: {}",
-                    coachId, e.getMessage());
+            log.warn("GET /api/v1/reservations/by-coach/{} - Usuario entrenador no encontrado, respondiendo 404: {}",
+                    userId, e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }

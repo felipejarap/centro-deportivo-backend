@@ -26,7 +26,7 @@ public class ReservationRequestDto {
     @Schema(description = "Identificador único de la clase que se desea reservar (Proveniente de ms-classes)", example = "12")
     private Long idClasse;
 
-    @Schema(description = "Identificador único del entrenador asignado (Proveniente de MS_Entrenadores)", example = "2")
+    @Schema(description = "Identificador del usuario que imparte la clase (Proveniente de MS_Usuarios)", example = "2")
     private Long idCoach;
 
     @NotNull(message = "La fecha de reserva no puede estar vacía")

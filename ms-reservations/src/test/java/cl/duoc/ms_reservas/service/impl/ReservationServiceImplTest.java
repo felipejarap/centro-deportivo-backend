@@ -4,7 +4,6 @@ import cl.duoc.ms_reservas.dto.*;
 import cl.duoc.ms_reservas.model.Reservation;
 import cl.duoc.ms_reservas.repository.ReservationRespository;
 import cl.duoc.ms_reservas.service.api.ClasseClient;
-import cl.duoc.ms_reservas.service.api.CoachClient;
 import cl.duoc.ms_reservas.service.api.UserClient;
 import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,9 +38,6 @@ class ReservationServiceImplTest {
     private UserClient userClient;
 
     @Mock
-    private CoachClient coachClient;
-
-    @Mock
     private ClasseClient claseClient;
 
     @InjectMocks
@@ -50,7 +46,7 @@ class ReservationServiceImplTest {
     private Reservation reservationEntity;
     private ReservationRequestDto requestDto;
     private UserResponseDto mockUser;
-    private CoachResponseDto mockCoach;
+    private UserResponseDto mockCoach;
     private ClasseResponseDto mockClasse;
     private LocalDateTime reservationDate;
 
@@ -77,9 +73,9 @@ class ReservationServiceImplTest {
         mockUser.setId(10L);
         mockUser.setUsername("felipe.perez");
 
-        mockCoach = new CoachResponseDto();
-        mockCoach.setIdCoach(3L);
-        mockCoach.setName("Marcelo");
+        mockCoach = new UserResponseDto();
+        mockCoach.setId(3L);
+        mockCoach.setUsername("Marcelo");
 
         mockClasse = new ClasseResponseDto();
         mockClasse.setId(5L);
@@ -98,7 +94,7 @@ class ReservationServiceImplTest {
         // GIVEN
         when(repository.findAll()).thenReturn(List.of(reservationEntity));
         when(userClient.findById(10L)).thenReturn(mockUser);
-        when(coachClient.findById(3L)).thenReturn(mockCoach);
+        when(userClient.findById(3L)).thenReturn(mockCoach);
         when(claseClient.findById(5L)).thenReturn(mockClasse);
 
         // WHEN
@@ -122,7 +118,7 @@ class ReservationServiceImplTest {
         // GIVEN
         when(repository.findById(1L)).thenReturn(Optional.of(reservationEntity));
         when(userClient.findById(10L)).thenThrow(new RuntimeException("Error User"));
-        when(coachClient.findById(3L)).thenThrow(new RuntimeException("Error Coach"));
+        when(userClient.findById(3L)).thenThrow(new RuntimeException("Error Coach"));
         when(claseClient.findById(5L)).thenThrow(new RuntimeException("Error Classe"));
 
         // WHEN
@@ -311,14 +307,14 @@ class ReservationServiceImplTest {
     @Test
     void givenUserFeignException_whenFindByUserId_throwException() {
         // GIVEN: Simulamos el fallo de red o timeout
-        when(coachClient.findById(3L)).thenThrow(new RuntimeException("Timeout"));
+        when(userClient.findById(3L)).thenThrow(new RuntimeException("Timeout"));
 
         // WHEN & THEN: Capturamos cualquier tipo de Exception que maneje tu servicio real
         assertThrows(Exception.class, () -> service.findByCoachId(3L));
     }
 
     // =========================================================================
-    // PRUEBAS: METODO findByCoachId() (Filtro por Microservicio de Entrenadores)
+    // PRUEBAS: METODO findByCoachId() (Filtro por usuario con rol de profesor)
     // =========================================================================
 
     /**
@@ -328,7 +324,7 @@ class ReservationServiceImplTest {
     @Test
     void givenNonExistingCoachInFeign_whenFindByCoachId_thenReturnNull() throws Exception {
         // GIVEN
-        when(coachClient.findById(99L)).thenReturn(null);
+        when(userClient.findById(99L)).thenReturn(null);
 
         // WHEN
         List<ReservationResponseDto> result = service.findByCoachId(99L);
@@ -474,7 +470,7 @@ class ReservationServiceImplTest {
     @Test
     void findByUserCoachAndClassReturnEnrichedResultsAndWrapFailures() throws Exception {
         when(userClient.findById(10L)).thenReturn(mockUser);
-        when(coachClient.findById(3L)).thenReturn(mockCoach);
+        when(userClient.findById(3L)).thenReturn(mockCoach);
         when(claseClient.findById(5L)).thenReturn(mockClasse);
         when(repository.findByIdUser(10L)).thenReturn(List.of(reservationEntity));
         when(repository.findByIdCoach(3L)).thenReturn(List.of(reservationEntity));
@@ -485,7 +481,7 @@ class ReservationServiceImplTest {
         assertEquals(1, service.findByClasseId(5L).size());
 
         when(userClient.findById(10L)).thenThrow(new RuntimeException("user failure"));
-        when(coachClient.findById(3L)).thenThrow(new RuntimeException("coach failure"));
+        when(userClient.findById(3L)).thenThrow(new RuntimeException("coach failure"));
         when(claseClient.findById(5L)).thenThrow(new RuntimeException("class failure"));
         assertEquals("user failure", assertThrows(Exception.class, () -> service.findByUserId(10L)).getMessage());
         assertEquals("coach failure", assertThrows(Exception.class, () -> service.findByCoachId(3L)).getMessage());

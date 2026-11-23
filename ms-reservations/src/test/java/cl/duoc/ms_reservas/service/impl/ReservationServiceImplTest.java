@@ -183,6 +183,19 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    void createRejectsASecondConfirmedReservationForTheSameUserAndClass() {
+        when(repository.existsByIdUserAndIdClasseAndReservationStatusIgnoreCase(
+                10L, 5L, "CONFIRMADA")).thenReturn(true);
+
+        ResponseStatusException exception =
+                assertThrows(ResponseStatusException.class, () -> service.create(requestDto));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(claseClient, never()).reserveSpot(anyLong());
+        verify(repository, never()).save(any(Reservation.class));
+    }
+
+    @Test
     void createRejectsNonexistentOrNonClientUserBeforeSaving() {
         requestDto.setIdUser(99L);
         when(userClient.findById(99L)).thenReturn(null);
@@ -354,6 +367,27 @@ class ReservationServiceImplTest {
 
         verify(claseClient).reserveSpot(5L);
         verify(claseClient, never()).releaseSpot(any());
+    }
+
+    @Test
+    void reconfirmingCancelledReservationWithAnotherActiveReservationDoesNotConsumeAnotherSpot() {
+        Reservation cancelled = new Reservation();
+        cancelled.setIdReservation(2L);
+        cancelled.setIdUser(10L);
+        cancelled.setIdClasse(5L);
+        cancelled.setIdCoach(3L);
+        cancelled.setReservationDate(reservationDate);
+        cancelled.setReservationStatus("CANCELADA");
+        when(repository.findById(2L)).thenReturn(Optional.of(cancelled));
+        when(repository.existsByIdUserAndIdClasseAndReservationStatusIgnoreCaseAndIdReservationNot(
+                10L, 5L, "CONFIRMADA", 2L)).thenReturn(true);
+
+        ResponseStatusException exception =
+                assertThrows(ResponseStatusException.class, () -> service.update(2L, requestDto));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(claseClient, never()).reserveSpot(anyLong());
+        verify(repository, never()).save(any(Reservation.class));
     }
 
     // =========================================================================

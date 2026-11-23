@@ -112,6 +112,7 @@ public class ReservationServiceImpl implements ReservationService {
         validateReferences(reservation, true);
         boolean reservedSpot = isConfirmed(reservation.getReservationStatus());
         if (reservedSpot) {
+            rejectDuplicateConfirmedReservation(reservation.getIdUser(), reservation.getIdClasse(), null);
             reserveSpot(reservation.getIdClasse());
         }
         Reservation saved;
@@ -148,6 +149,7 @@ public class ReservationServiceImpl implements ReservationService {
         boolean releasePreviousSpot = previouslyReserved && !sameActiveClass;
 
         if (allocateNewSpot) {
+            rejectDuplicateConfirmedReservation(reservation.getIdUser(), reservation.getIdClasse(), id);
             reserveSpot(reservation.getIdClasse());
         }
 
@@ -248,6 +250,18 @@ public class ReservationServiceImpl implements ReservationService {
 
     private boolean isConfirmed(String status) {
         return "CONFIRMADA".equalsIgnoreCase(status);
+    }
+
+    private void rejectDuplicateConfirmedReservation(Long userId, Long classId, Long reservationId) {
+        boolean alreadyConfirmed = reservationId == null
+                ? repository.existsByIdUserAndIdClasseAndReservationStatusIgnoreCase(
+                        userId, classId, "CONFIRMADA")
+                : repository.existsByIdUserAndIdClasseAndReservationStatusIgnoreCaseAndIdReservationNot(
+                        userId, classId, "CONFIRMADA", reservationId);
+        if (alreadyConfirmed) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe una reserva confirmada para esta clase.");
+        }
     }
 
     private void reserveSpot(Long classId) {

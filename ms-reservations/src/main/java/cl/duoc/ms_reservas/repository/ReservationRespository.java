@@ -10,4 +10,8 @@ public interface ReservationRespository extends JpaRepository<Reservation, Long>
     List<Reservation> findByIdUser(Long idUser);
     List<Reservation> findByIdCoach(Long idCoach);
     List<Reservation> findByIdClasse(Long idClasse);
+    boolean existsByIdUserAndIdClasseAndReservationStatusIgnoreCase(Long idUser, Long idClasse,
+                                                                     String reservationStatus);
+    boolean existsByIdUserAndIdClasseAndReservationStatusIgnoreCaseAndIdReservationNot(
+            Long idUser, Long idClasse, String reservationStatus, Long idReservation);
 }

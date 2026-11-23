@@ -4,12 +4,17 @@ import duoc.cl.ms_classes.dto.ClasseRequestDto;
 import duoc.cl.ms_classes.dto.ClasseResponseDto;
 import duoc.cl.ms_classes.dto.TypeClassesRequestDto;
 import duoc.cl.ms_classes.dto.TypeClassesResponseDto;
+import duoc.cl.ms_classes.dto.UserResponseDto;
 import duoc.cl.ms_classes.model.Classe;
 import duoc.cl.ms_classes.model.TypeClasses;
 import duoc.cl.ms_classes.repository.ClasseRepository;
 import duoc.cl.ms_classes.service.ClasseService;
+import duoc.cl.ms_classes.service.api.UserClient;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -18,6 +23,7 @@ import java.util.List;
 public class ClasseServiceImpl implements ClasseService {
 
     private final ClasseRepository repository;
+    private final UserClient userClient;
 
     private Classe toEntity(ClasseResponseDto dto) {
         Classe entity = new Classe();
@@ -94,12 +100,18 @@ public class ClasseServiceImpl implements ClasseService {
     }
 
     @Override
+    public List<ClasseResponseDto> findByCoachId(Long coachId) {
+        return repository.findByCoachId(coachId).stream().map(this::toDto).toList();
+    }
+
+    @Override
     public ClasseResponseDto findById(Long id) {
         return repository.findById(id).map(this::toDto).orElse(null);
     }
 
     @Override
     public ClasseResponseDto create(ClasseRequestDto classe) {
+        validateCoach(classe.getCoachId());
         return toDto(repository.save(toEntity(classe)));
     }
 
@@ -107,6 +119,7 @@ public class ClasseServiceImpl implements ClasseService {
     public ClasseResponseDto update(Long id, ClasseRequestDto classe) {
         Classe current = repository.findById(id).orElse(null);
         if (current != null) {
+            validateCoach(classe.getCoachId());
             int currentCapacity = current.getMaximumCapacity() == null ? 0 : current.getMaximumCapacity();
             int currentSpots = current.getSpotsAvailable() == null ? 0 : current.getSpotsAvailable();
             int reservedSpots = Math.max(0, currentCapacity - currentSpots);
@@ -120,6 +133,28 @@ public class ClasseServiceImpl implements ClasseService {
             return toDto(repository.save(entity));
         }
         return null;
+    }
+
+    private void validateCoach(Long coachId) {
+        if (coachId == null) {
+            return;
+        }
+
+        UserResponseDto coach;
+        try {
+            coach = userClient.findById(coachId);
+        } catch (FeignException.NotFound exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El profesor indicado no existe.", exception);
+        }
+
+        if (coach == null || !coachId.equals(coach.getId())
+                || coach.getTypeUser() == null
+                || coach.getTypeUser().getName() == null
+                || !"Entrenador".equalsIgnoreCase(coach.getTypeUser().getName().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La clase debe asignarse a un usuario con rol Entrenador.");
+        }
     }
 
     @Override

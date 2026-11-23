@@ -72,13 +72,25 @@ class ReservationServiceImplTest {
         mockUser = new UserResponseDto();
         mockUser.setId(10L);
         mockUser.setUsername("felipe.perez");
+        mockUser.setTypeUser(new TypeUserResponseDto(2L, "Cliente"));
 
         mockCoach = new UserResponseDto();
         mockCoach.setId(3L);
         mockCoach.setUsername("Marcelo");
+        mockCoach.setTypeUser(new TypeUserResponseDto(3L, "Entrenador"));
 
         mockClasse = new ClasseResponseDto();
         mockClasse.setId(5L);
+        mockClasse.setCoachId(3L);
+
+        lenient().when(userClient.findById(10L)).thenReturn(mockUser);
+        lenient().when(userClient.findById(3L)).thenReturn(mockCoach);
+        lenient().when(claseClient.findById(anyLong())).thenAnswer(invocation -> {
+            ClasseResponseDto classe = new ClasseResponseDto();
+            classe.setId(invocation.getArgument(0));
+            classe.setCoachId(3L);
+            return classe;
+        });
     }
 
     // =========================================================================
@@ -168,6 +180,70 @@ class ReservationServiceImplTest {
         assertEquals(1L, result.getIdReservation());
         verify(repository, times(1)).save(any(Reservation.class));
         verify(claseClient).reserveSpot(5L);
+    }
+
+    @Test
+    void createRejectsNonexistentOrNonClientUserBeforeSaving() {
+        requestDto.setIdUser(99L);
+        when(userClient.findById(99L)).thenReturn(null);
+
+        assertThrows(ResponseStatusException.class, () -> service.create(requestDto));
+
+        verify(repository, never()).save(any(Reservation.class));
+        verify(claseClient, never()).reserveSpot(anyLong());
+    }
+
+    @Test
+    void createRejectsCoachNotAssignedToRequestedClass() {
+        requestDto.setIdCoach(99L);
+
+        ResponseStatusException exception =
+                assertThrows(ResponseStatusException.class, () -> service.create(requestDto));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(repository, never()).save(any(Reservation.class));
+    }
+
+    @Test
+    void createFillsCoachFromClassWhenRequestOmitsIt() {
+        requestDto.setIdCoach(null);
+        when(repository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReservationResponseDto result = service.create(requestDto);
+
+        assertEquals(3L, result.getIdCoach());
+        verify(repository).save(argThat(saved -> saved.getIdCoach().equals(3L)));
+    }
+
+    @Test
+    void updateAllowsCancellationAfterClassCoachChangesAndUsesCurrentCoach() {
+        UserResponseDto replacementCoach = new UserResponseDto();
+        replacementCoach.setId(4L);
+        replacementCoach.setTypeUser(new TypeUserResponseDto(3L, "Entrenador"));
+        when(userClient.findById(4L)).thenReturn(replacementCoach);
+        when(claseClient.findById(5L)).thenAnswer(invocation -> {
+            ClasseResponseDto reassignedClass = new ClasseResponseDto();
+            reassignedClass.setId(5L);
+            reassignedClass.setCoachId(4L);
+            return reassignedClass;
+        });
+
+        ReservationRequestDto cancellation = new ReservationRequestDto();
+        cancellation.setIdUser(10L);
+        cancellation.setIdClasse(5L);
+        cancellation.setIdCoach(3L);
+        cancellation.setReservationDate(reservationDate);
+        cancellation.setReservationStatus("CANCELADA");
+        when(repository.findById(1L)).thenReturn(Optional.of(reservationEntity));
+        when(repository.save(any(Reservation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReservationResponseDto result = service.update(1L, cancellation);
+
+        assertNotNull(result);
+        assertEquals(4L, result.getIdCoach());
+        verify(repository).save(argThat(saved ->
+                "CANCELADA".equals(saved.getReservationStatus()) && saved.getIdCoach().equals(4L)));
+        verify(claseClient).releaseSpot(5L);
     }
 
     /**
@@ -472,8 +548,8 @@ class ReservationServiceImplTest {
         when(userClient.findById(10L)).thenReturn(mockUser);
         when(userClient.findById(3L)).thenReturn(mockCoach);
         when(claseClient.findById(5L)).thenReturn(mockClasse);
+        when(claseClient.findByCoachId(3L)).thenReturn(List.of(mockClasse));
         when(repository.findByIdUser(10L)).thenReturn(List.of(reservationEntity));
-        when(repository.findByIdCoach(3L)).thenReturn(List.of(reservationEntity));
         when(repository.findByIdClasse(5L)).thenReturn(List.of(reservationEntity));
 
         assertEquals(1, service.findByUserId(10L).size());
@@ -486,5 +562,24 @@ class ReservationServiceImplTest {
         assertEquals("user failure", assertThrows(Exception.class, () -> service.findByUserId(10L)).getMessage());
         assertEquals("coach failure", assertThrows(Exception.class, () -> service.findByCoachId(3L)).getMessage());
         assertEquals("class failure", assertThrows(Exception.class, () -> service.findByClasseId(5L)).getMessage());
+    }
+
+    @Test
+    void findByCoachIncludesReservationsWhenLegacyReservationHasNoCoachId() throws Exception {
+        reservationEntity.setIdCoach(null);
+        when(userClient.findById(3L)).thenReturn(mockCoach);
+        when(claseClient.findByCoachId(3L)).thenReturn(List.of(mockClasse));
+        when(repository.findByIdClasse(5L)).thenReturn(List.of(reservationEntity));
+        when(userClient.findById(10L)).thenReturn(mockUser);
+        when(claseClient.findById(5L)).thenReturn(mockClasse);
+
+        List<ReservationResponseDto> result = service.findByCoachId(3L);
+
+        assertEquals(1, result.size());
+        assertEquals(10L, result.get(0).getIdUser());
+        assertNull(result.get(0).getIdCoach());
+        assertEquals("felipe.perez", result.get(0).getUser().getUsername());
+        verify(claseClient).findByCoachId(3L);
+        verify(repository).findByIdClasse(5L);
     }
 }

@@ -26,9 +26,9 @@ public class Subscription {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private Long userId;
-    @Column(name = "plans_id")
+    @Column(name = "plans_id", nullable = false)
     private Long plansId;
     @Column(name = "end_date", columnDefinition = "DATETIME")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")

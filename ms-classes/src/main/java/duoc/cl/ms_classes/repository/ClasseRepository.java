@@ -7,7 +7,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 public interface ClasseRepository extends JpaRepository<Classe, Long> {
+
+    List<Classe> findByCoachId(Long coachId);
 
     @Modifying
     @Transactional

@@ -8,6 +8,7 @@ import java.util.List;
 public interface ClasseService {
 
     List<ClasseResponseDto> findAll();
+    List<ClasseResponseDto> findByCoachId(Long coachId);
     ClasseResponseDto findById(Long id);
     ClasseResponseDto create(ClasseRequestDto classe);
     ClasseResponseDto update(Long id,ClasseRequestDto classe);

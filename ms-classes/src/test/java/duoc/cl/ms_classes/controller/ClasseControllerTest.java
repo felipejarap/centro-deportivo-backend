@@ -32,6 +32,7 @@ class ClasseControllerTest {
         ClasseRequestDto request = new ClasseRequestDto();
         List<ClasseResponseDto> classes = List.of(classe);
         when(service.findAll()).thenReturn(classes);
+        when(service.findByCoachId(3L)).thenReturn(classes);
         when(service.findById(1L)).thenReturn(classe);
         when(service.findById(2L)).thenReturn(null);
         when(service.create(request)).thenReturn(classe);
@@ -41,6 +42,7 @@ class ClasseControllerTest {
         when(service.deleteById(2L)).thenReturn(false);
 
         assertSame(classes, controller.findAll().getBody());
+        assertSame(classes, controller.findByCoachId(3L).getBody());
         assertSame(classe, controller.findById(1L).getBody());
         assertEquals(HttpStatus.NOT_FOUND, controller.findById(2L).getStatusCode());
         ResponseEntity<ClasseResponseDto> created = controller.create(request);

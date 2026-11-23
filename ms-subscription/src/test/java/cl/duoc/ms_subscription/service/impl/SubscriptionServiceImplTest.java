@@ -52,7 +52,10 @@ class SubscriptionServiceImplTest {
         requestDto = new SubscriptionRequestDto(1L, 10L, 5L, endDate, true,
                 LocalDateTime.now(), false, "Tarjeta");
         mockUserResponse = new UserResponseDto();
-        mockPlansResponse = new PlansResponseDto();
+        mockUserResponse.setId(10L);
+        mockPlansResponse = new PlansResponseDto(5L, "Plan", 100.0, 30);
+        lenient().when(userClient.findById(10L)).thenReturn(mockUserResponse);
+        lenient().when(plansClient.findById(5L)).thenReturn(mockPlansResponse);
     }
 
     // =========================================================================
@@ -314,6 +317,21 @@ class SubscriptionServiceImplTest {
         // THEN
         assertNotNull(result);
         verify(repository, times(1)).save(any(Subscription.class));
+    }
+
+    @Test
+    void createRejectsMissingUserOrPlanReferences() {
+        requestDto.setUserId(null);
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST,
+                assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                        () -> service.create(requestDto)).getStatusCode());
+
+        requestDto.setUserId(10L);
+        when(plansClient.findById(5L)).thenReturn(null);
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST,
+                assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                        () -> service.create(requestDto)).getStatusCode());
+        verify(repository, never()).save(any(Subscription.class));
     }
 
     /**

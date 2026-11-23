@@ -56,11 +56,11 @@ public class ReservationController {
         }
         return ResponseEntity.ok(reserva);
     }
-    @Operation(summary = "Registrar una nueva reserva", description = "Crea una solicitud de cupo para una clase deportiva validando la existencia del usuario, la sesión y el entrenador.")
+    @Operation(summary = "Registrar una nueva reserva", description = "Crea una solicitud validando que el usuario sea Cliente, exista la clase y el profesor corresponda a ella. Si se omite el profesor, se toma el asignado a la clase.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Reserva generada y confirmada exitosamente",
                     content = @Content(schema = @Schema(implementation = ReservationResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o parámetros faltantes (Validación fallida)", content = @Content),
+            @ApiResponse(responseCode = "400", description = "Usuario, clase o profesor inválido, o datos de entrada faltantes", content = @Content),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor", content = @Content)
     })
     @PostMapping
@@ -84,7 +84,7 @@ public class ReservationController {
         ReservationResponseDto created = service.create(reservation);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
-    @Operation(summary = "Actualizar una reserva existente", description = "Permite modificar el estado de la reserva (ej: CANCELADA) o reprogramar la fecha buscando por su ID único.")
+    @Operation(summary = "Actualizar una reserva existente", description = "Permite cambiar el estado o reprogramar una reserva después de validar el usuario, la clase y el profesor.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Reserva actualizada de forma exitosa",
                     content = @Content(schema = @Schema(implementation = ReservationResponseDto.class))),

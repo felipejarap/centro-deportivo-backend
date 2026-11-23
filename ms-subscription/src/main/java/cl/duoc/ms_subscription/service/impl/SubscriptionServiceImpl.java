@@ -9,6 +9,7 @@ import cl.duoc.ms_subscription.repository.SubscriptionRepository;
 import cl.duoc.ms_subscription.service.SubscriptionService;
 import cl.duoc.ms_subscription.service.api.PlansClient;
 import cl.duoc.ms_subscription.service.api.UserClient;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -119,14 +120,16 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     @Override
     public SubscriptionResponseDto create(SubscriptionRequestDto subscription) {
+        validateReferences(subscription.getUserId(), subscription.getPlansId());
         if (subscription.getStartDate() == null) subscription.setStartDate(java.time.LocalDateTime.now());
         return toDto(repository.save(toEntity(subscription)));
     }
 
     @Override
     public SubscriptionResponseDto createForUser(Long userId, SubscriptionRequestDto subscription) {
-        PlansResponseDto plan = plansClient.findById(subscription.getPlansId());
-        if (plan == null || plan.getDurationDays() <= 0) {
+        validateUser(userId);
+        PlansResponseDto plan = validatePlan(subscription.getPlansId());
+        if (plan.getDurationDays() <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El plan seleccionado no es válido.");
         }
         LocalDateTime startDate = LocalDateTime.now();
@@ -141,6 +144,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     public SubscriptionResponseDto update(Long id, SubscriptionRequestDto subscription) {
         if (repository.existsById(id)) {
+            validateReferences(subscription.getUserId(), subscription.getPlansId());
             Subscription entity = toEntity(subscription);
             if (entity.getStartDate() == null) entity.setStartDate(java.time.LocalDateTime.now());
             entity.setId(id);
@@ -149,13 +153,57 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         return null;
     }
 
+    private void validateReferences(Long userId, Long planId) {
+        validateUser(userId);
+        validatePlan(planId);
+    }
+
+    private void validateUser(Long userId) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El usuario de la suscripción es obligatorio.");
+        }
+
+        UserResponseDto user;
+        try {
+            user = userClient.findById(userId);
+        } catch (FeignException.NotFound exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El usuario asociado a la suscripción no existe.", exception);
+        }
+        if (user == null || !userId.equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El usuario asociado a la suscripción no existe.");
+        }
+    }
+
+    private PlansResponseDto validatePlan(Long planId) {
+        if (planId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El plan de la suscripción es obligatorio.");
+        }
+
+        PlansResponseDto plan;
+        try {
+            plan = plansClient.findById(planId);
+        } catch (FeignException.NotFound exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El plan asociado a la suscripción no existe.", exception);
+        }
+        if (plan == null || !planId.equals(plan.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El plan asociado a la suscripción no existe.");
+        }
+        return plan;
+    }
+
     @Override
     public SubscriptionResponseDto renewForUser(Long userId, Long subscriptionId) {
         return repository.findById(subscriptionId)
                 .filter(subscription -> userId.equals(subscription.getUserId()))
                 .map(subscription -> {
-                    PlansResponseDto plan = plansClient.findById(subscription.getPlansId());
-                    if (plan == null || plan.getDurationDays() <= 0) {
+                    PlansResponseDto plan = validatePlan(subscription.getPlansId());
+                    if (plan.getDurationDays() <= 0) {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El plan asociado no es válido.");
                     }
                     LocalDateTime now = LocalDateTime.now();

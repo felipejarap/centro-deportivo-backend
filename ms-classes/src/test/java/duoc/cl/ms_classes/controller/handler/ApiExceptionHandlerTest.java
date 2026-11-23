@@ -6,6 +6,7 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -34,5 +35,15 @@ class ApiExceptionHandlerTest {
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals("capacity unavailable", response.getBody().get("error"));
+    }
+
+    @Test
+    void preservesExpectedResponseStatusExceptions() {
+        var exception = new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid coach");
+
+        var response = handler.handlerResponseStatus(exception);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("invalid coach", response.getBody().get("error"));
     }
 }

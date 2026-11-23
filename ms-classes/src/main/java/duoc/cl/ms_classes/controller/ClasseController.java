@@ -34,6 +34,14 @@ public class ClasseController {
     public ResponseEntity<List<ClasseResponseDto>> findAll() {
         return ResponseEntity.ok(service.findAll());
     }
+
+    @Operation(summary = "Obtener clases de un profesor",
+            description = "Recupera las clases asignadas al usuario profesor indicado.")
+    @GetMapping("/by-coach/{coachId}")
+    public ResponseEntity<List<ClasseResponseDto>> findByCoachId(@PathVariable Long coachId) {
+        return ResponseEntity.ok(service.findByCoachId(coachId));
+    }
+
     @Operation(summary = "Buscar clase por ID", description = "Recupera la información detallada de una clase específica mediante su identificador único.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Clase encontrada con éxito",
@@ -71,11 +79,11 @@ public class ClasseController {
                 : ResponseEntity.status(HttpStatus.CONFLICT).build();
     }
 
-    @Operation(summary = "Programar una nueva clase", description = "Registra una sesión deportiva en un horario específico validando capacidades y cupos iniciales.")
+    @Operation(summary = "Programar una nueva clase", description = "Registra una sesión deportiva validando capacidades y que el profesor asignado exista y tenga rol Entrenador.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Clase programada exitosamente",
                     content = @Content(schema = @Schema(implementation = ClasseResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o formatos de fecha incorrectos", content = @Content),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos o profesor inexistente/sin rol Entrenador", content = @Content),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor", content = @Content)
     })
     @PostMapping
@@ -85,7 +93,7 @@ public class ClasseController {
     }
 
 
-    @Operation(summary = "Actualizar una clase existente", description = "Modifica los horarios o la capacidad de una clase deportiva buscando por su ID único.")
+    @Operation(summary = "Actualizar una clase existente", description = "Modifica una clase y valida que el profesor asignado exista y tenga rol Entrenador.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Clase actualizada exitosamente",
                     content = @Content(schema = @Schema(implementation = ClasseResponseDto.class))),

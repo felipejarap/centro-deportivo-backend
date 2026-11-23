@@ -2,9 +2,12 @@ package duoc.cl.ms_classes.service.impl;
 
 import duoc.cl.ms_classes.dto.ClasseRequestDto;
 import duoc.cl.ms_classes.dto.ClasseResponseDto;
+import duoc.cl.ms_classes.dto.TypeUserResponseDto;
+import duoc.cl.ms_classes.dto.UserResponseDto;
 import duoc.cl.ms_classes.model.Classe;
 import duoc.cl.ms_classes.model.TypeClasses;
 import duoc.cl.ms_classes.repository.ClasseRepository;
+import duoc.cl.ms_classes.service.api.UserClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +30,9 @@ class ClasseServiceImplTest {
     // Simula el repositorio local de la tabla de clases
     @Mock
     private ClasseRepository repository;
+
+    @Mock
+    private UserClient userClient;
 
     // Inyecta el repositorio simulado de forma automática dentro del servicio real de clases
     @InjectMocks
@@ -70,6 +76,18 @@ class ClasseServiceImplTest {
         // THEN: Confirmamos que la lista contenga los datos mapeados correctamente
         assertNotNull(result);
         assertEquals(1, result.size());
+    }
+
+    @Test
+    void givenCoachId_whenFindByCoachId_thenReturnAssignedClasses() {
+        classeEntity.setCoachId(9L);
+        when(repository.findByCoachId(9L)).thenReturn(List.of(classeEntity));
+
+        List<ClasseResponseDto> result = service.findByCoachId(9L);
+
+        assertEquals(1, result.size());
+        assertEquals(9L, result.get(0).getCoachId());
+        verify(repository).findByCoachId(9L);
     }
 
     // =========================================================================
@@ -128,6 +146,38 @@ class ClasseServiceImplTest {
         // THEN: Comprobamos que el ID autogenerado se asigne de forma exitosa
         assertNotNull(result);
         assertEquals(1L, result.getId());
+    }
+
+    @Test
+    void createRejectsCoachThatDoesNotExistOrIsNotAnEntrenador() {
+        requestDto.setCoachId(9L);
+        when(userClient.findById(9L)).thenReturn(null);
+
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> service.create(requestDto));
+
+        UserResponseDto client = new UserResponseDto();
+        client.setId(9L);
+        client.setTypeUser(new TypeUserResponseDto(2L, "Cliente"));
+        when(userClient.findById(9L)).thenReturn(client);
+
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> service.create(requestDto));
+        verify(repository, never()).save(any(Classe.class));
+    }
+
+    @Test
+    void createAllowsExistingEntrenadorAsCoach() {
+        requestDto.setCoachId(9L);
+        UserResponseDto coach = new UserResponseDto();
+        coach.setId(9L);
+        coach.setTypeUser(new TypeUserResponseDto(3L, "Entrenador"));
+        when(userClient.findById(9L)).thenReturn(coach);
+        when(repository.save(any(Classe.class))).thenReturn(classeEntity);
+
+        assertNotNull(service.create(requestDto));
+
+        verify(repository).save(any(Classe.class));
     }
 
     // =========================================================================

@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -107,6 +109,7 @@ public class ReservationServiceImpl implements ReservationService {
         log.info("Creando reserva: idUsuario={}, idClase={}, idEntrenador={}, fechaReserva={}, estadoReserva={}",
                 reservation.getIdUser(), reservation.getIdClasse(),
                 reservation.getIdCoach(), reservation.getReservationDate(), reservation.getReservationStatus());
+        validateReferences(reservation, true);
         boolean reservedSpot = isConfirmed(reservation.getReservationStatus());
         if (reservedSpot) {
             reserveSpot(reservation.getIdClasse());
@@ -136,6 +139,7 @@ public class ReservationServiceImpl implements ReservationService {
             return null;
         }
 
+        validateReferences(reservation, false);
         boolean previouslyReserved = isConfirmed(existing.getReservationStatus());
         boolean willBeReserved = isConfirmed(reservation.getReservationStatus());
         boolean sameActiveClass = previouslyReserved && willBeReserved
@@ -164,6 +168,57 @@ public class ReservationServiceImpl implements ReservationService {
         }
         log.info("Reserva actualizada exitosamente: idReservation={}", id);
         return toDto(saved);
+    }
+
+    private void validateReferences(ReservationRequestDto reservation, boolean enforceRequestedCoach) {
+        requireUser(reservation.getIdUser(), "Cliente", "El alumno indicado no existe o no tiene rol Cliente.");
+        if (reservation.getIdClasse() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La clase indicada es obligatoria.");
+        }
+
+        ClasseResponseDto classe;
+        try {
+            classe = claseClient.findById(reservation.getIdClasse());
+        } catch (FeignException.NotFound exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "La clase indicada no existe.", exception);
+        }
+        if (classe == null || !reservation.getIdClasse().equals(classe.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La clase indicada no existe.");
+        }
+
+        Long assignedCoachId = classe.getCoachId();
+        Long requestedCoachId = reservation.getIdCoach();
+        if (enforceRequestedCoach && requestedCoachId != null && !requestedCoachId.equals(assignedCoachId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El profesor indicado no corresponde a la clase.");
+        }
+        if (assignedCoachId != null) {
+            requireUser(assignedCoachId, "Entrenador",
+                    "El profesor asignado a la clase no existe o no tiene rol Entrenador.");
+            reservation.setIdCoach(assignedCoachId);
+        }
+    }
+
+    private UserResponseDto requireUser(Long userId, String expectedRole, String errorMessage) {
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage);
+        }
+
+        UserResponseDto user;
+        try {
+            user = userClient.findById(userId);
+        } catch (FeignException.NotFound exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage, exception);
+        }
+
+        if (user == null || !userId.equals(user.getId())
+                || user.getTypeUser() == null
+                || user.getTypeUser().getName() == null
+                || !expectedRole.equalsIgnoreCase(user.getTypeUser().getName().trim())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMessage);
+        }
+        return user;
     }
 
     @Override
@@ -259,7 +314,13 @@ public class ReservationServiceImpl implements ReservationService {
                 log.warn("Usuario entrenador no encontrado en ms-users: idUsuario={}", coachId);
                 return null;
             }
-            List<ReservationResponseDto> result = repository.findByIdCoach(coachId)
+            List<ClasseResponseDto> assignedClasses = claseClient.findByCoachId(coachId);
+            Map<Long, Reservation> reservationsById = new LinkedHashMap<>();
+            for (ClasseResponseDto assignedClass : assignedClasses) {
+                repository.findByIdClasse(assignedClass.getId())
+                        .forEach(reservation -> reservationsById.put(reservation.getIdReservation(), reservation));
+            }
+            List<ReservationResponseDto> result = reservationsById.values()
                     .stream().map(this::toDto).toList();
             log.info("Reservas encontradas para usuario entrenador: idUsuario={}, total={}",
                     coachId, result.size());

@@ -1,0 +1,3 @@
+ALTER TABLE subscription
+    MODIFY COLUMN user_id BIGINT NOT NULL,
+    MODIFY COLUMN plans_id BIGINT NOT NULL;

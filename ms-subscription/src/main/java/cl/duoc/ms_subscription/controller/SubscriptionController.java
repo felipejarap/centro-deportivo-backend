@@ -87,11 +87,11 @@ public class SubscriptionController {
         }
     }
 
-    @Operation(summary = "Registrar una nueva suscripción", description = "Asigna un plan de membresía a un usuario validando que los identificadores obligatorios no sean nulos.")
+    @Operation(summary = "Registrar una nueva suscripción", description = "Asigna un plan de membresía solo si el usuario y el plan existen en sus microservicios.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Suscripción registrada con éxito",
                     content = @Content(schema = @Schema(implementation = SubscriptionResponseDto.class))),
-            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos o faltantes (Validación fallida)", content = @Content),
+            @ApiResponse(responseCode = "400", description = "Usuario o plan inexistente, o datos obligatorios faltantes", content = @Content),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor", content = @Content)
     })
 
@@ -111,7 +111,7 @@ public class SubscriptionController {
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(service.createForUser(userId, subscription));
     }
-    @Operation(summary = "Actualizar una suscripción existente", description = "Modifica los estados, vigencias o asociaciones de una membresía buscando por su ID único.")
+    @Operation(summary = "Actualizar una suscripción existente", description = "Modifica los datos de una membresía después de validar que sus referencias a usuario y plan existan.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Suscripción actualizada de forma exitosa",
                     content = @Content(schema = @Schema(implementation = SubscriptionResponseDto.class))),

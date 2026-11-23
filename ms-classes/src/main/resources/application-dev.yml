@@ -7,6 +7,8 @@ spring:
     url: jdbc:mysql://localhost:3306/db_classes?allowPublicKeyRetrieval=true&useSSL=false
     username: root
     password:
+  flyway:
+    locations: classpath:db/migration,classpath:db/dev-migration
   jpa:
     show-sql: true
     properties:

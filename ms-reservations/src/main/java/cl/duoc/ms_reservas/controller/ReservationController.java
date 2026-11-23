@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/reservations")
@@ -114,13 +115,26 @@ public class ReservationController {
             @RequestHeader("X-User-Id") Long authenticatedUserId,
             @Valid @RequestBody ReservationRequestDto reservation) {
         ReservationResponseDto existing = service.findById(reservationId);
-        if (!userId.equals(authenticatedUserId) || existing == null || !userId.equals(existing.getIdUser())
+        if (existing == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!userId.equals(authenticatedUserId) || !userId.equals(existing.getIdUser())
                 || !userId.equals(reservation.getIdUser())
-                || !"CANCELADA".equalsIgnoreCase(reservation.getReservationStatus())
                 || !existing.getIdClasse().equals(reservation.getIdClasse())
                 || !java.util.Objects.equals(existing.getIdCoach(), reservation.getIdCoach())
                 || !java.util.Objects.equals(existing.getReservationDate(), reservation.getReservationDate())) {
-            return ResponseEntity.status(existing == null ? HttpStatus.NOT_FOUND : HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        boolean cancelling = "CONFIRMADA".equalsIgnoreCase(existing.getReservationStatus())
+                && "CANCELADA".equalsIgnoreCase(reservation.getReservationStatus());
+        boolean reconfirming = "CANCELADA".equalsIgnoreCase(existing.getReservationStatus())
+                && "CONFIRMADA".equalsIgnoreCase(reservation.getReservationStatus());
+        if (!cancelling && !reconfirming) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        if (reconfirming && reservation.getReservationDate().toLocalDate().isBefore(LocalDate.now())) {
+            return ResponseEntity.badRequest().build();
         }
         ReservationResponseDto updated = service.update(reservationId, reservation);
         return updated == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(updated);

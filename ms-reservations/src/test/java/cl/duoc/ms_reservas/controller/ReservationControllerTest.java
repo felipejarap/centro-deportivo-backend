@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -103,7 +104,7 @@ class ReservationControllerTest {
     }
 
     @Test
-    void updateForUserChecksOwnershipAndOnlyPermitsCancellationWithoutChangingReservationDetails() {
+    void updateForUserChecksOwnershipAndPermitsOnlyCancellationWithoutChangingDetails() {
         ReservationRequestDto cancellation = request(10L, "CANCELADA");
         ReservationResponseDto current = response(10L, "CONFIRMADA");
         when(service.findById(1L)).thenReturn(current);
@@ -130,6 +131,37 @@ class ReservationControllerTest {
 
         assertEquals(HttpStatus.OK, controller.updateForUser(10L, 1L, 10L, cancellation).getStatusCode());
         verify(service).update(1L, cancellation);
+    }
+
+    @Test
+    void updateForUserAllowsReconfirmingTodayOrFutureButRejectsPastReservations() {
+        ReservationRequestDto reconfirmation = request(10L, "CONFIRMADA");
+        reconfirmation.setReservationDate(LocalDate.now().atStartOfDay());
+        ReservationResponseDto cancelled = response(10L, "CANCELADA");
+        cancelled.setReservationDate(reconfirmation.getReservationDate());
+        when(service.findById(1L)).thenReturn(cancelled);
+        when(service.update(1L, reconfirmation)).thenReturn(response(10L, "CONFIRMADA"));
+
+        assertEquals(HttpStatus.OK,
+                controller.updateForUser(10L, 1L, 10L, reconfirmation).getStatusCode());
+
+        ReservationRequestDto futureReconfirmation = request(10L, "CONFIRMADA");
+        futureReconfirmation.setReservationDate(LocalDate.now().plusDays(1).atStartOfDay());
+        ReservationResponseDto futureCancelled = response(10L, "CANCELADA");
+        futureCancelled.setReservationDate(futureReconfirmation.getReservationDate());
+        when(service.findById(2L)).thenReturn(futureCancelled);
+        when(service.update(2L, futureReconfirmation)).thenReturn(response(10L, "CONFIRMADA"));
+        assertEquals(HttpStatus.OK,
+                controller.updateForUser(10L, 2L, 10L, futureReconfirmation).getStatusCode());
+
+        ReservationRequestDto pastReconfirmation = request(10L, "CONFIRMADA");
+        pastReconfirmation.setReservationDate(LocalDate.now().minusDays(1).atStartOfDay());
+        ReservationResponseDto pastCancelled = response(10L, "CANCELADA");
+        pastCancelled.setReservationDate(pastReconfirmation.getReservationDate());
+        when(service.findById(3L)).thenReturn(pastCancelled);
+        assertEquals(HttpStatus.BAD_REQUEST,
+                controller.updateForUser(10L, 3L, 10L, pastReconfirmation).getStatusCode());
+        verify(service, never()).update(eq(3L), any());
     }
 
     @Test

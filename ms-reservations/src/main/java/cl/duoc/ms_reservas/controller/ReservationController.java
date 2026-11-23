@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 @RestController
 @RequestMapping("/api/v1/reservations")
@@ -133,7 +134,8 @@ public class ReservationController {
         if (!cancelling && !reconfirming) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        if (reconfirming && reservation.getReservationDate().toLocalDate().isBefore(LocalDate.now())) {
+        if (reconfirming && reservation.getReservationDate().toLocalDate()
+                .isBefore(LocalDate.now(ZoneId.of("America/Santiago")))) {
             return ResponseEntity.badRequest().build();
         }
         ReservationResponseDto updated = service.update(reservationId, reservation);
